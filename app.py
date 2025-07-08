@@ -47,6 +47,7 @@ elif st.session_state.page == "prayer":
 
 elif st.session_state.page == "meditation":
     render_meditation()
+    
 
 elif st.session_state.page == "accountability":
     render_accountability()

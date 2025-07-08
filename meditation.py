@@ -51,10 +51,46 @@ def render_meditation():
         if topic:
             with st.spinner("Generating your meditation..."):
                 output = generate_meditation(topic)
-                st.markdown("### 🧘 Meditation Guide")
+
+                st.markdown("### 🧘 Your Meditation Session")
+                st.markdown("---")
+
                 for section in output.split("\n"):
-                    if section.strip():
-                        st.markdown(f"**{section.split(':')[0]}:** {':'.join(section.split(':')[1:]).strip()}")
+                    if section.strip() and ":" in section:
+                        key, val = section.split(":", 1)
+                        key = key.strip()
+                        val = val.strip()
+                        # ...your styled rendering here
+
+
+                        if "Scripture" in key:
+                            st.markdown(f"### ✝️ <span style='color:#1a75ff'>{key}</span>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='font-size:18px;color:#003366;'>{val}</div>", unsafe_allow_html=True)
+                        elif "Breathing" in key:
+                            st.markdown(f"### 🌬️ <span style='color:#008080'>{key}</span>", unsafe_allow_html=True)
+                            # Insert animation HTML
+                            st.markdown("""
+                            <style>
+                            @keyframes breath {
+                            0% { transform: scale(1); opacity: 0.8; }
+                            50% { transform: scale(1.4); opacity: 1; }
+                            100% { transform: scale(1); opacity: 0.8; }
+                            }
+                            .breath-circle {
+                            margin: 20px auto;
+                            width: 100px;
+                            height: 100px;
+                            border-radius: 50%;
+                            background-color: #86e1f9;
+                            animation: breath 6s ease-in-out infinite;
+                            }
+                            </style>
+                            <div class='breath-circle'></div>
+                            <p style='text-align:center;'>Inhale 4s → Hold 4s → Exhale 4s</p>
+                            """, unsafe_allow_html=True)
+                        else:
+                            st.markdown(f"### 🧠 <span style='color:#6a0dad'>{key}</span>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='font-size:16px'>{val}</div>", unsafe_allow_html=True)
 
     if st.button("⬅️ Back to Home"):
         st.session_state.page = "home"
