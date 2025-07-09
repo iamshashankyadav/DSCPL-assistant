@@ -1,8 +1,8 @@
 import streamlit as st
 from langchain_groq import ChatGroq
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 import os
 from dotenv import load_dotenv
 
@@ -14,26 +14,48 @@ groq_api_key = os.getenv("GROQ_API_KEY")
 llm = ChatGroq(
     groq_api_key=groq_api_key,
     model_name="llama3-70b-8192",
-    max_tokens=300  # Limit response length
+    max_tokens=300
 )
 
-# --- Prompt Setup ---
-chat_prompt = ChatPromptTemplate.from_messages([
-    SystemMessage(content="You are DSCPL, a spiritual companion who responds with warmth, biblical wisdom, and emotional support. Keep your responses under 150 words."),
-    MessagesPlaceholder(variable_name="history"),
-    HumanMessage(content="{input}")
+# --- Prompt Template (no memory) ---
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", 
+     "You are DSCPL, a spiritual companion and Christian guide. "
+     "You respond with warmth, biblical wisdom, and emotional support. "
+     "If the user asks a question or requests a plan or advice, prioritize answering clearly and directly first. "
+     "Then, add encouragement or Scripture if helpful. "
+     "Avoid vague replies like 'what’s on your heart today?' unless the user is silent. "
+     "Keep responses under 150 words."),
+    ("human", "{input}")
 ])
 
 parser = StrOutputParser()
 
-def chat_response_with_memory(input_text, history_messages):
-    chain = chat_prompt | llm | parser
-    return chain.invoke({
-        "input": input_text,
-        "history": history_messages
-    })
+# --- Response Function ---
+def chat_response(input_text):
+    if not input_text.strip():
+        return "I didn’t catch that. Could you rephrase it?"
 
-# --- Main Just Chat UI ---
+    try:
+        # Step 1: Format the prompt manually
+        formatted_prompt = prompt.format_messages(input=input_text.strip())
+        print(input_text.strip())
+        # Step 2: Print formatted prompt for debugging
+        print("\n--- FORMATTED PROMPT ---")
+        for msg in formatted_prompt:
+            print(f"{msg.type.upper()}: {msg.content}")
+        print("--- END PROMPT ---\n")
+
+        # Step 3: Call the LLM
+        response = llm.invoke(formatted_prompt)
+        return parser.invoke(response)
+
+    except Exception as e:
+        print("❌ Error during prompt processing or LLM call:", str(e))
+        return "Sorry, I ran into an issue trying to understand your message. Please try again."
+
+# --- UI ---
 def render_just_chat():
     st.markdown("""
         <style>
@@ -44,7 +66,7 @@ def render_just_chat():
                 margin-bottom: 100px;
             }
             .user-msg {
-                background-color: #e6ccff;
+                background-color: #9846e8;
                 padding: 10px 15px;
                 border-radius: 15px;
                 align-self: flex-end;
@@ -53,7 +75,7 @@ def render_just_chat():
                 font-size: 16px;
             }
             .ai-msg {
-                background-color: #f2f2f2;
+                background-color: #331c1c;
                 padding: 10px 15px;
                 border-radius: 15px;
                 align-self: flex-start;
@@ -66,41 +88,28 @@ def render_just_chat():
         <p>Talk freely with DSCPL. Be honest. Let’s grow together.</p>
     """, unsafe_allow_html=True)
 
-    # Initialize chat history
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # Display message history
+    # Display past messages
     st.markdown("<div class='chat-container'>", unsafe_allow_html=True)
     for msg in st.session_state.chat_history:
-        role = msg["role"]
-        content = msg["content"]
-        if role == "user":
-            st.markdown(f"<div class='user-msg'>🧍 {content}</div>", unsafe_allow_html=True)
-        elif role == "ai":
-            st.markdown(f"<div class='ai-msg'>🙏 {content}</div>", unsafe_allow_html=True)
+        if msg["role"] == "user":
+            st.markdown(f"<div class='user-msg'>🧍 {msg['content']}</div>", unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div class='ai-msg'>🙏 {msg['content']}</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Bottom input bar
+    # Input box
     user_input = st.chat_input("What's on your heart?")
-
     if user_input:
-        # Use last 2 turns (2 user + 2 ai) for memory
-        memory_window = st.session_state.chat_history[-4:]
-        formatted_memory = []
-
-        for m in memory_window:
-            if m["role"] == "user":
-                formatted_memory.append(HumanMessage(content=m["content"]))
-            elif m["role"] == "ai":
-                formatted_memory.append(AIMessage(content=m["content"]))
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
 
         with st.spinner("DSCPL is replying..."):
-            response = chat_response_with_memory(user_input, formatted_memory)
+            response = chat_response(user_input)
 
-        # Store to full chat history
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
         st.session_state.chat_history.append({"role": "ai", "content": response})
+        st.rerun()
 
     if st.button("⬅️ Back to Home"):
         st.session_state.page = "home"
