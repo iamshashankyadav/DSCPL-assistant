@@ -62,28 +62,76 @@ def render_just_chat():
             .chat-container {
                 display: flex;
                 flex-direction: column;
-                gap: 1rem;
+                gap: 0.5rem;
                 margin-bottom: 100px;
             }
+            
+            /* User message (right side, purple) */
             .user-msg {
                 background-color: #9846e8;
-                padding: 10px 15px;
-                border-radius: 15px;
+                color: white;
+                padding: 8px 12px;
+                border-radius: 15px 15px 0 15px;
                 align-self: flex-end;
                 max-width: 75%;
                 font-family: 'Segoe UI', sans-serif;
-                font-size: 16px;
+                font-size: 14px;
+                position: relative;
+                margin-right: 5px;
             }
+            
+            /* AI message (left side, dark gray) */
             .ai-msg {
-                background-color: #331c1c;
-                padding: 10px 15px;
-                border-radius: 15px;
+                background-color: #2d2d2d;
+                color: white;
+                padding: 8px 12px;
+                border-radius: 15px 15px 15px 0;
                 align-self: flex-start;
                 max-width: 75%;
                 font-family: 'Segoe UI', sans-serif;
-                font-size: 16px;
+                font-size: 14px;
+                position: relative;
+                margin-left: 5px;
+            }
+            
+            /* Optional: Add tiny message tails (like WhatsApp) */
+            .user-msg::after {
+                content: "";
+                position: absolute;
+                bottom: 0;
+                right: -8px;
+                width: 0;
+                height: 0;
+                border: 8px solid transparent;
+                border-left-color: #9846e8;
+                border-right: 0;
+                border-bottom: 0;
+                margin-bottom: 0px;
+            }
+            
+            .ai-msg::after {
+                content: "";
+                position: absolute;
+                bottom: 0;
+                left: -8px;
+                width: 0;
+                height: 0;
+                border: 8px solid transparent;
+                border-right-color: #2d2d2d;
+                border-left: 0;
+                border-bottom: 0;
+                margin-bottom: 0px;
+            }
+            
+            /* Optional: Time stamp (WhatsApp-style) */
+            .msg-time {
+                font-size: 11px;
+                color: #999;
+                margin-top: 2px;
+                text-align: right;
             }
         </style>
+        
         <h2>💬 Just Chat</h2>
         <p>Talk freely with DSCPL. Be honest. Let’s grow together.</p>
     """, unsafe_allow_html=True)

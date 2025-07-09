@@ -1,96 +1,95 @@
 import streamlit as st
-from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_groq import ChatGroq
 import os
 from dotenv import load_dotenv
 
+# --- Load env ---
 load_dotenv()
-
-# --- Groq LLM Setup ---
 groq_api_key = os.getenv("GROQ_API_KEY")
 
+# --- LLM Setup ---
 llm = ChatGroq(
     groq_api_key=groq_api_key,
-    model_name="llama3-70b-8192"
+    model_name="llama3-70b-8192",
+    max_tokens=600
 )
 
-# --- Prompt Template for Meditation ---
-meditation_prompt = ChatPromptTemplate.from_template("""
-You are a Biblical meditation guide. Create a reflective meditation for the topic: {topic}.
+# --- Prompt Setup ---
+prompt = ChatPromptTemplate.from_messages([
+    ("system", 
+     "You are DSCPL, a Christian meditation assistant. Generate a daily spiritual meditation plan.\n"
+     "Each day's content should include:\n"
+     "- Scripture focus (1 verse with reference)\n"
+     "- Meditation prompts:\n"
+     "   1. What does this reveal about God?\n"
+     "   2. How can I live this out today?\n"
+     "Add a simple breathing reminder at the end of each day.\n\n"
+     "Format:\n"
+     "Day 1:\n"
+     "Scripture: ...\n"
+     "Reflect:\n"
+     "- What does this reveal about God?\n"
+     "- How can I live this out today?\n"
+     "Breathing Reminder: Inhale 4s → Hold 4s → Exhale 4s\n\n"
+     "Repeat for each day."),
+    ("human", "{input}")
+])
 
-Structure:
-1. Scripture Focus (with reference)
-2. Meditation Prompt 1: "What does this reveal about God?"
-3. Meditation Prompt 2: "How can I live this out today?"
-4. Breathing Guide (e.g., Inhale 4s → Hold 4s → Exhale 4s)
+parser = StrOutputParser()
+chain = prompt | llm | parser
 
-Keep it calming, peaceful, and focused on truth.
-""")
-
-meditation_chain = meditation_prompt | llm | StrOutputParser()
-
-def generate_meditation(topic):
-    return meditation_chain.invoke({"topic": topic})
-
-
-# --- Meditation Page Renderer ---
 def render_meditation():
-    st.title("🧘 Daily Meditation")
+    st.markdown("""
+        <h2 style='color:#7B68EE;'>🧘 Daily Meditation</h2>
+        <p>Select a topic and number of days to begin your scripture-centered meditation practice.</p>
+    """, unsafe_allow_html=True)
 
     topics = [
-        "Peace", "God’s Presence", "Strength", "Wisdom", "Faith", "Something else..."
+        "Peace",
+        "God's Presence",
+        "Strength",
+        "Wisdom",
+        "Faith",
+        "Something else..."
     ]
 
-    topic = st.selectbox("Choose a topic", topics)
+    selected_topic = st.selectbox("Select a meditation topic:", topics)
+    num_days = st.number_input("How many days would you like the plan for?", min_value=1, max_value=30, value=7)
 
-    if topic == "Something else...":
-        topic = st.text_input("Enter your own topic")
+    # Add lightweight breathing animation
+    st.markdown("""
+        <div style="text-align:center; margin-top: 10px; margin-bottom: 20px;">
+            <div style="font-size:16px; margin-bottom:10px;">Breathe With Me</div>
+            <div style="
+                width: 100px;
+                height: 100px;
+                background-color: #e0e0ff;
+                border-radius: 50%;
+                animation: pulse 6s infinite;">
+            </div>
+        </div>
+        <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            25% { transform: scale(1.25); }
+            50% { transform: scale(1.5); }
+            75% { transform: scale(1.25); }
+            100% { transform: scale(1); }
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
-    if st.button("Begin Meditation"):
-        if topic:
-            with st.spinner("Generating your meditation..."):
-                output = generate_meditation(topic)
+    if st.button("Generate My Meditation Plan ✨"):
+        with st.spinner("Preparing your spiritual reflections..."):
+            input_text = f"Topic: {selected_topic}\nDuration: {num_days} Days"
+            output = chain.invoke({"input": input_text})
 
-                st.markdown("### 🧘 Your Meditation Session")
-                st.markdown("---")
-
-                for section in output.split("\n"):
-                    if section.strip() and ":" in section:
-                        key, val = section.split(":", 1)
-                        key = key.strip()
-                        val = val.strip()
-                        # ...your styled rendering here
-
-
-                        if "Scripture" in key:
-                            st.markdown(f"### ✝️ <span style='color:#1a75ff'>{key}</span>", unsafe_allow_html=True)
-                            st.markdown(f"<div style='font-size:18px;color:#003366;'>{val}</div>", unsafe_allow_html=True)
-                        elif "Breathing" in key:
-                            st.markdown(f"### 🌬️ <span style='color:#008080'>{key}</span>", unsafe_allow_html=True)
-                            # Insert animation HTML
-                            st.markdown("""
-                            <style>
-                            @keyframes breath {
-                            0% { transform: scale(1); opacity: 0.8; }
-                            50% { transform: scale(1.4); opacity: 1; }
-                            100% { transform: scale(1); opacity: 0.8; }
-                            }
-                            .breath-circle {
-                            margin: 20px auto;
-                            width: 100px;
-                            height: 100px;
-                            border-radius: 50%;
-                            background-color: #86e1f9;
-                            animation: breath 6s ease-in-out infinite;
-                            }
-                            </style>
-                            <div class='breath-circle'></div>
-                            <p style='text-align:center;'>Inhale 4s → Hold 4s → Exhale 4s</p>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"### 🧠 <span style='color:#6a0dad'>{key}</span>", unsafe_allow_html=True)
-                            st.markdown(f"<div style='font-size:16px'>{val}</div>", unsafe_allow_html=True)
+            for section in output.split("\n\n"):
+                if section.strip():
+                    st.markdown(f"<div style='padding: 15px; background-color: #272740; border-radius: 10px; margin-bottom: 10px;'>"
+                                f"<pre style='font-family:Segoe UI; font-size:15px;'>{section.strip()}</pre></div>", unsafe_allow_html=True)
 
     if st.button("⬅️ Back to Home"):
         st.session_state.page = "home"
