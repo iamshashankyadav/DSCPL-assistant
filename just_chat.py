@@ -2,7 +2,7 @@ import streamlit as st
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage,AIMessage
 import os
 from dotenv import load_dotenv
 
@@ -38,22 +38,35 @@ def chat_response(input_text):
         return "I didn’t catch that. Could you rephrase it?"
 
     try:
-        # Step 1: Format the prompt manually
-        formatted_prompt = prompt.format_messages(input=input_text.strip())
-        print(input_text.strip())
-        # Step 2: Print formatted prompt for debugging
-        print("\n--- FORMATTED PROMPT ---")
-        for msg in formatted_prompt:
-            print(f"{msg.type.upper()}: {msg.content}")
-        print("--- END PROMPT ---\n")
+        # Initialize message history with system prompt
+        messages = [SystemMessage(
+            content="You are DSCPL, a spiritual companion and Christian guide. "
+                    "You respond with warmth, biblical wisdom, and emotional support. "
+                    "If the user asks a question or requests a plan or advice, prioritize answering clearly and directly first. "
+                    "Then, add encouragement or Scripture if helpful. "
+                    "Avoid vague replies like 'what’s on your heart today?' unless the user is silent. "
+                    "Keep responses under 150 words."
+        )]
 
-        # Step 3: Call the LLM
-        response = llm.invoke(formatted_prompt)
+        # Add the last two exchanges (user and AI)
+        history = st.session_state.chat_history[-4:]  # max 2 exchanges → 4 messages
+        for msg in history:
+            if msg["role"] == "user":
+                messages.append(HumanMessage(content=msg["content"]))
+            else:
+                messages.append(AIMessage(content=msg["content"]))
+
+        # Add the new user message
+        messages.append(HumanMessage(content=input_text.strip()))
+
+        # Call the LLM
+        response = llm.invoke(messages)
         return parser.invoke(response)
 
     except Exception as e:
         print("❌ Error during prompt processing or LLM call:", str(e))
         return "Sorry, I ran into an issue trying to understand your message. Please try again."
+
 
 # --- UI ---
 def render_just_chat():
